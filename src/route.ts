@@ -1,9 +1,4 @@
 /**
- * @since 0.6.0
- */
-import { isEmpty } from 'fp-ts/lib/Record'
-
-/**
  * @category routes
  * @since 0.4.0
  */
@@ -31,7 +26,7 @@ export class Route {
    * @since 0.4.0
    */
   static isEmpty(r: Route): boolean {
-    return r.parts.length === 0 && isEmpty(r.query)
+    return r.parts.length === 0 && Object.keys(r.query).length === 0
   }
   /**
    * @since 0.4.0

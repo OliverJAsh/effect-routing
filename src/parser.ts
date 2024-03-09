@@ -1,26 +1,12 @@
-/**
- * @since 0.6.0
- */
-import { Alternative1 } from 'fp-ts/lib/Alternative'
-import { identity, Lazy } from 'fp-ts/lib/function'
-import { Monad1 } from 'fp-ts/lib/Monad'
-import { Monoid } from 'fp-ts/lib/Monoid'
-import * as O from 'fp-ts/lib/Option'
-// This `pipe` version is deprecated, but provided by `fp-ts` v2.0.1 and higher.
-import { pipe } from 'fp-ts/lib/pipeable'
+import { Alternative } from '@effect/typeclass/Alternative'
+import { Monad } from '@effect/typeclass/Monad'
+import { Monoid } from '@effect/typeclass/Monoid'
+import { identity, pipe } from 'effect'
+import * as O from 'effect/Option'
 
 import { RowLacks } from './helpers'
 import { Route } from './route'
-
-declare module 'fp-ts/lib/HKT' {
-  interface URItoKind<A> {
-    'fp-ts-routing/Parser': Parser<A>
-  }
-}
-
-const PARSER_URI = 'fp-ts-routing/Parser'
-
-type PARSER_URI = typeof PARSER_URI
+import { LazyArg } from 'effect/Function'
 
 /**
  * @category parsers
@@ -57,7 +43,7 @@ export class Parser<A> {
     return new Parser((r) =>
       pipe(
         this.run(r),
-        O.chain(([a, r2]) => f(a).run(r2))
+        O.flatMap(([a, r2]) => f(a).run(r2))
       )
     )
   }
@@ -68,7 +54,7 @@ export class Parser<A> {
     return new Parser((r) =>
       pipe(
         this.run(r),
-        O.alt(() => that.run(r))
+        O.orElse(() => that.run(r))
       )
     )
   }
@@ -84,7 +70,7 @@ export class Parser<A> {
  * @category parsers
  * @since 0.4.0
  */
-export const zero = <A>(): Parser<A> => new Parser(() => O.none)
+export const zero = <A>(): Parser<A> => new Parser(() => O.none())
 
 /**
  * @category parsers
@@ -93,10 +79,10 @@ export const zero = <A>(): Parser<A> => new Parser(() => O.none)
 export const parse = <A>(parser: Parser<A>, r: Route, a: A): A =>
   pipe(
     parser.run(r),
-    O.fold(
-      () => a,
-      ([x]) => x
-    )
+    O.match({
+      onNone: () => a,
+      onSome: ([x]) => x
+    })
   )
 
 /**
@@ -112,7 +98,7 @@ export const getParserMonoid = <A>(): Monoid<Parser<A>> => ({
  * @category parsers
  * @since 0.5.1
  */
-export const parser: Monad1<PARSER_URI> & Alternative1<PARSER_URI> = {
+export const parser: Monad<PARSER_URI> & Alternative<PARSER_URI> = {
   URI: PARSER_URI,
   map: (ma, f) => ma.map(f),
   of: Parser.of,
@@ -122,7 +108,7 @@ export const parser: Monad1<PARSER_URI> & Alternative1<PARSER_URI> = {
     new Parser((r) =>
       pipe(
         fx.run(r),
-        O.alt(() => f().run(r))
+        O.orElse(() => f().run(r))
       )
     ),
   zero
@@ -133,7 +119,7 @@ export const parser: Monad1<PARSER_URI> & Alternative1<PARSER_URI> = {
  * @since 0.5.1
  */
 export const alt =
-  <A>(that: Lazy<Parser<A>>) =>
+  <A>(that: LazyArg<Parser<A>>) =>
   (fa: Parser<A>): Parser<A> =>
     parser.alt(fa, that)
 
